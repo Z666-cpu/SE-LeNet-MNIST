@@ -1,0 +1,8 @@
+# 说明：PyTorch / TorchVision 需根据本机 CUDA 版本单独安装（见 README.md 的安装命令），
+# 不放在本文件，避免 pip 默认拉取到不匹配 CUDA 的 CPU 版本。
+# 本机实验环境版本（复现建议保持大版本一致）：
+#   torch        2.6.0+cu124
+#   torchvision  0.21.0+cu124
+
+numpy==1.24.3
+matplotlib==3.7.1
