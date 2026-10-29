@@ -1,0 +1,13 @@
+=== 自动验收结果 ===
+accuracy_comparison.png:LeNet-5:points: 30
+accuracy_comparison.png:SE-BN-LeNet:points: 30
+loss_comparison.png:LeNet-5:points: 30
+loss_comparison.png:SE-BN-LeNet:points: 30
+LeNet-5:cm_acc: 99.25
+LeNet-5:reported_acc: 99.25
+LeNet-5:match: True
+LeNet-5:per_class: [99.59, 99.56, 99.61, 99.41, 99.29, 99.1, 98.96, 99.12, 99.28, 98.51]
+SE-BN-LeNet:cm_acc: 99.34
+SE-BN-LeNet:reported_acc: 99.34
+SE-BN-LeNet:match: True
+SE-BN-LeNet:per_class: [99.69, 99.74, 99.71, 99.5, 99.29, 98.77, 98.85, 99.42, 99.28, 99.01]
