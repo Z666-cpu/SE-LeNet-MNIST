@@ -48,22 +48,30 @@ def load_metrics():
 
 
 def plot_comparison(metrics, verify):
-    """绘制论文图 1（准确率对比）与图 2（损失对比），均为主种子 30 点曲线。"""
+    """绘制论文图 1（准确率对比）与图 2（损失对比），均为主种子 30 点曲线。
+
+    每个模型三条曲线：Train（点线）、Val（虚线）、Test（实线），与图题“训练、验证与测试”一致。
+    """
     models = metrics['models']
     for metric_key, ylabel, title, fname in [
         ('test_acc', 'Accuracy (%)', 'Accuracy Curves Comparison', 'accuracy_comparison.png'),
         ('test_loss', 'Loss', 'Loss Curves Comparison', 'loss_comparison.png'),
     ]:
+        base = metric_key.split('_')[1]
+        train_key, val_key, test_key = f'train_{base}', f'val_{base}', metric_key
         plt.figure(figsize=(9, 5), dpi=200)
         for name in COMPARE_PAIR:
             history = models[name]['history']
-            epochs = range(1, len(history[metric_key]) + 1)
-            npts = len(history[metric_key])
+            epochs = range(1, len(history[test_key]) + 1)
+            npts = len(history[test_key])
             verify[f'{fname}:{name}:points'] = npts
-            plt.plot(epochs, history[metric_key], '-', color=COLORS[name], linewidth=2,
+            # Train：点线；Val：虚线；Test：实线
+            plt.plot(epochs, history[train_key], ':', color=COLORS[name], alpha=0.55,
+                     linewidth=1.5, label=f'{name} (Train)')
+            plt.plot(epochs, history[val_key], '--', color=COLORS[name], alpha=0.45,
+                     label=f'{name} (Val)')
+            plt.plot(epochs, history[test_key], '-', color=COLORS[name], linewidth=2,
                      label=f'{name} (Test)')
-            plt.plot(epochs, history['val_' + metric_key.split('_')[1]], '--',
-                     color=COLORS[name], alpha=0.45, label=f'{name} (Val)')
         # 最终统计标注（单种子 / 多种子自适应）
         n_seeds = len(metrics['config']['seeds'])
         label = 'Single-run final' if n_seeds == 1 else f'{n_seeds}-seed final'
@@ -75,7 +83,7 @@ def plot_comparison(metrics, verify):
             for name in COMPARE_PAIR)
         plt.figtext(0.5, -0.02, f'{label}: {txt}', ha='center', fontsize=9)
         plt.xlabel('Epoch'); plt.ylabel(ylabel); plt.title(title)
-        plt.legend(loc='best'); plt.grid(True, alpha=0.3); plt.tight_layout()
+        plt.legend(loc='best', ncol=2, fontsize=8); plt.grid(True, alpha=0.3); plt.tight_layout()
         plt.savefig(os.path.join(RESULTS_DIR, fname), bbox_inches='tight')
         plt.close()
         print(f'已保存: results/{fname}')

@@ -1,0 +1,213 @@
+{
+  "models": {
+    "LeNet-5": {
+      "test_acc": 99.25,
+      "top_confusions": [
+        {
+          "true": 9,
+          "pred": 4,
+          "count": 6
+        },
+        {
+          "true": 4,
+          "pred": 9,
+          "count": 5
+        },
+        {
+          "true": 5,
+          "pred": 3,
+          "count": 5
+        },
+        {
+          "true": 6,
+          "pred": 5,
+          "count": 4
+        },
+        {
+          "true": 2,
+          "pred": 7,
+          "count": 3
+        },
+        {
+          "true": 7,
+          "pred": 2,
+          "count": 3
+        },
+        {
+          "true": 7,
+          "pred": 9,
+          "count": 3
+        },
+        {
+          "true": 9,
+          "pred": 5,
+          "count": 3
+        }
+      ]
+    },
+    "SE-LeNet": {
+      "test_acc": 99.25,
+      "top_confusions": [
+        {
+          "true": 5,
+          "pred": 3,
+          "count": 7
+        },
+        {
+          "true": 4,
+          "pred": 9,
+          "count": 5
+        },
+        {
+          "true": 6,
+          "pred": 5,
+          "count": 5
+        },
+        {
+          "true": 2,
+          "pred": 7,
+          "count": 4
+        },
+        {
+          "true": 9,
+          "pred": 4,
+          "count": 4
+        },
+        {
+          "true": 3,
+          "pred": 5,
+          "count": 3
+        },
+        {
+          "true": 9,
+          "pred": 5,
+          "count": 3
+        },
+        {
+          "true": 0,
+          "pred": 7,
+          "count": 2
+        }
+      ]
+    },
+    "BN-LeNet": {
+      "test_acc": 99.33,
+      "top_confusions": [
+        {
+          "true": 5,
+          "pred": 3,
+          "count": 7
+        },
+        {
+          "true": 9,
+          "pred": 4,
+          "count": 7
+        },
+        {
+          "true": 4,
+          "pred": 9,
+          "count": 4
+        },
+        {
+          "true": 7,
+          "pred": 2,
+          "count": 4
+        },
+        {
+          "true": 9,
+          "pred": 5,
+          "count": 4
+        },
+        {
+          "true": 0,
+          "pred": 7,
+          "count": 2
+        },
+        {
+          "true": 2,
+          "pred": 3,
+          "count": 2
+        },
+        {
+          "true": 3,
+          "pred": 5,
+          "count": 2
+        }
+      ]
+    },
+    "SE-BN-LeNet": {
+      "test_acc": 99.34,
+      "top_confusions": [
+        {
+          "true": 5,
+          "pred": 3,
+          "count": 7
+        },
+        {
+          "true": 4,
+          "pred": 9,
+          "count": 5
+        },
+        {
+          "true": 6,
+          "pred": 0,
+          "count": 5
+        },
+        {
+          "true": 9,
+          "pred": 4,
+          "count": 5
+        },
+        {
+          "true": 3,
+          "pred": 5,
+          "count": 2
+        },
+        {
+          "true": 3,
+          "pred": 7,
+          "count": 2
+        },
+        {
+          "true": 4,
+          "pred": 8,
+          "count": 2
+        },
+        {
+          "true": 5,
+          "pred": 6,
+          "count": 2
+        }
+      ]
+    }
+  },
+  "mcnemar": {
+    "LeNet-5 vs SE-BN-LeNet": {
+      "model_a": "LeNet-5",
+      "model_b": "SE-BN-LeNet",
+      "only_a_correct_b": 32,
+      "only_b_correct_a": 41,
+      "discordant": 73,
+      "p_exact": 0.3492,
+      "p_chi2": 0.3491
+    },
+    "BN-LeNet vs SE-BN-LeNet": {
+      "model_a": "BN-LeNet",
+      "model_b": "SE-BN-LeNet",
+      "only_a_correct_b": 32,
+      "only_b_correct_a": 33,
+      "discordant": 65,
+      "p_exact": 1.0,
+      "p_chi2": 1.0
+    },
+    "LeNet-5 vs BN-LeNet": {
+      "model_a": "LeNet-5",
+      "model_b": "BN-LeNet",
+      "only_a_correct_b": 33,
+      "only_b_correct_a": 41,
+      "discordant": 74,
+      "p_exact": 0.416,
+      "p_chi2": 0.4158
+    }
+  }
+}

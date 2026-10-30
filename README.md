@@ -5,7 +5,8 @@
 
 本项目复现经典网络 **LeNet-5**（LeCun et al., 1998）在 MNIST 上的训练流程，
 并设置四个配置用于对比与消融：基线 LeNet-5、仅 SE 通道门控、仅批归一化（BN）、SE-BN-LeNet。
-实验固定随机种子 `seed=42`，从训练集划分独立验证集选择最优 checkpoint，测试集仅用于最终评估。
+实验固定随机种子 `seed=42`，从训练集划分独立验证集选择最优 checkpoint，测试集不参与模型选择；
+逐轮测试指标仅用于观察泛化趋势与绘制收敛曲线，最终报告指标来自验证集选出的最优权重。
 
 > **诚实结论提示**：本项目不是"提出更强模型"的改进论文。在 MNIST 这一接近饱和的基准上，
 > BN 的主要作用是稳定并加快收敛、降低训练损失；SE 通道门控在本配置下未测得准确率增益，
@@ -20,7 +21,8 @@ SE-LeNet-MNIST/
 ├── models.py              # 四个模型定义：LeNet5 / SELenet / BNLenet / SEBNLenet（含 SEModule）
 ├── train_all_models.py    # 【主入口】训练全部 4 个模型，划分验证集、按验证集保存最优权重、输出 metrics.json 与单模型曲线
 ├── analysis.py            # 读取 metrics.json 生成论文对比曲线与基线/改进模型混淆矩阵，并写出自动验收结果
-├── requirements.txt       # numpy / matplotlib 依赖（PyTorch 按下方说明单独安装）
+├── stats_mcnemar.py       # 加载四个最优权重，统计易混数字对并完成模型对之间的 McNemar 检验，输出 results/stats.json
+├── requirements.txt       # numpy / matplotlib / scipy 依赖（PyTorch 按下方说明单独安装）
 ├── weights/               # 四个模型在验证集上选出的最优权重（*_best.pth）
 ├── results/               # 对比曲线、单模型曲线、混淆矩阵、metrics.json、verification.txt
 ├── train_log.txt          # 人类可读的训练汇总日志
@@ -38,6 +40,7 @@ SE-LeNet-MNIST/
 | torchvision | 0.21.0（实验环境 0.21.0+cu124） |
 | numpy | 1.24.3 |
 | matplotlib | 3.7.1 |
+| scipy | 1.10.1（McNemar 检验用） |
 | GPU | 可选；无 NVIDIA 显卡时代码自动切换 CPU（模型很小，CPU 也可训练，耗时更长） |
 
 ## 三、安装依赖
@@ -71,7 +74,7 @@ pip install -r requirements.txt
 
 ## 四、一键复现步骤
 
-在本项目根目录下依次执行两条命令：
+在本项目根目录下依次执行三条命令：
 
 ```bash
 # 第一步：训练全部 4 个模型（30 轮，seed=42，固定划分 54000 训练 / 6000 验证）
@@ -80,6 +83,9 @@ python train_all_models.py --seeds 42
 
 # 第二步：读取 metrics.json 生成论文对比曲线、两张混淆矩阵与自动验收文件
 python analysis.py
+
+# 第三步：加载四个最优权重，统计易混数字对并做模型对 McNemar 检验，输出 results/stats.json
+python stats_mcnemar.py
 ```
 
 > 多种子重复（可选，论文为单次运行，无需执行）：
@@ -92,6 +98,7 @@ python analysis.py
 - `results/accuracy_comparison.png`、`results/loss_comparison.png`：论文图 1、图 2
 - `results/confusion_LeNet-5.png`、`results/confusion_SE-BN-LeNet.png`：论文图 3 两张混淆矩阵
 - `results/verification.txt`：混淆矩阵对角线准确率与论文表格数字的自动核对结果
+- `results/stats.json`：各模型易混数字对与三对模型的 McNemar 检验不一致样本数、p 值
 - `train_log.txt`：人类可读训练汇总日志
 
 ## 五、实验结果（RTX 3050 Ti Laptop，torch 2.6.0+cu124，seed=42，30 轮，单次运行）
@@ -124,8 +131,9 @@ python analysis.py
 ### 5.4 结果解读（与论文一致）
 
 1. **BN 的主要贡献是改善训练过程**：含 BN 模型训练初期收敛更快、曲线更平稳，测试损失明显更低
-   （BN-LeNet 0.0195，基线 0.0308）；但在 MNIST 上最终测试准确率的差异很小，处于约 ±0.1 个百分点的
-   随机波动范围内。
+   （BN-LeNet 0.0195，基线 0.0308）；但在 MNIST 上最终测试准确率的差异很小，McNemar 检验
+   三对模型的 p 值均大于 0.05（基线 vs SE-BN-LeNet p=0.349，BN-LeNet vs SE-BN-LeNet p=1.000，
+   基线 vs BN-LeNet p=0.416），错误差异不具统计显著性。
 2. **SE 在本配置下未测得准确率增益**：+SE 与基线准确率、损失完全相同（99.25% / 0.0308）。
    原因是 SE 被置于输出空间尺寸为 1×1 的 C5 特征之后，全局平均池化退化为恒等映射，
    SE 实质只是对 120 维向量的两层 MLP 门控。
@@ -141,7 +149,8 @@ python analysis.py
 
 **统一训练配置**：Adam 优化器，初始学习率 0.001，权重衰减 1e-4，批次大小 64，训练 30 轮，
 CosineAnnealingLR 学习率调度，Dropout 0.25；输入缩放为 32×32，归一化均值 0.1307、标准差 0.3081。
-从 60 000 张训练图像中固定划分 54 000 训练 / 6 000 验证，10 000 张测试集仅用于最终评估。
+从 60 000 张训练图像中固定划分 54 000 训练 / 6 000 验证；10 000 张测试集不参与模型选择，
+逐轮测试指标仅用于观察泛化趋势，最终报告指标来自验证集选出的最优权重。
 
 > 说明：本文复现的是"LeNet-5 结构 + 现代训练配置"的强基线（使用 ReLU、最大池化、Dropout 与缩放插值），
 > 并非 1998 年原始 LeNet-5 的训练配方。
@@ -152,9 +161,11 @@ CosineAnnealingLR 学习率调度，Dropout 0.25；输入缩放为 32×32，归�
    `cudnn.deterministic=True`，保证同一环境下重复运行结果可复现。
 2. 最优 checkpoint 依据**验证集**准确率选取（并列时取验证损失更低者），报告的测试准确率与测试损失
    均来自该 checkpoint，口径一致；测试集不参与模型选择。
-3. 本项目为**单次运行**（一个种子）。不同 PyTorch / CUDA / cuDNN 版本、不同显卡之间，
-   浮点运算顺序存在细微差异，测试准确率通常在上述数值 **±0.1 个百分点** 范围内波动；
-   训练曲线趋势与结论保持一致即视为复现成功。若需统计层面的结论，应使用多种子重复并报告均值±标准差。
+3. 本项目为**单次运行**（一个种子），未在多种子上重复，因此不就跨种子波动幅度作定量结论。
+   模型对准确率差异是否显著，在同一测试集上以 McNemar 检验评估（见 `stats_mcnemar.py` 与 `results/stats.json`）；
+   本项目三对模型 p 值均大于 0.05，差异不显著。不同 PyTorch / CUDA / cuDNN 版本、不同显卡之间浮点运算
+   顺序存在细微差异，训练曲线趋势与上述结论保持一致即视为复现成功。若需统计层面更强的结论，
+   应使用多种子重复并报告均值±标准差。
 4. `weights/` 内附带对应环境训练好的最优权重，可直接由 `analysis.py` 加载复现混淆矩阵与准确率，无需重新训练。
 
 ## 八、常见问题
