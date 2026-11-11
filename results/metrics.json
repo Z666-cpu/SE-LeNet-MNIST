@@ -216,14 +216,14 @@
           "test_acc": 99.25,
           "test_loss": 0.0308,
           "time_sec": 557.9,
-          "latency_ms": 0.6874
+          "latency_ms": 0.72
         }
       },
       "test_acc_mean": 99.25,
       "test_acc_std": 0.0,
       "test_loss_mean": 0.0308,
       "test_loss_std": 0.0,
-      "latency_ms": 0.6874
+      "latency_ms": 0.72
     },
     "SE-LeNet": {
       "params": 76106,
@@ -430,14 +430,14 @@
           "test_acc": 99.25,
           "test_loss": 0.0308,
           "time_sec": 566.9,
-          "latency_ms": 0.9219
+          "latency_ms": 1.07
         }
       },
       "test_acc_mean": 99.25,
       "test_acc_std": 0.0,
       "test_loss_mean": 0.0308,
       "test_loss_std": 0.0,
-      "latency_ms": 0.9219
+      "latency_ms": 1.07
     },
     "BN-LeNet": {
       "params": 61990,
@@ -644,14 +644,14 @@
           "test_acc": 99.33,
           "test_loss": 0.0195,
           "time_sec": 562.5,
-          "latency_ms": 0.8211
+          "latency_ms": 0.87
         }
       },
       "test_acc_mean": 99.33,
       "test_acc_std": 0.0,
       "test_loss_mean": 0.0195,
       "test_loss_std": 0.0,
-      "latency_ms": 0.8211
+      "latency_ms": 0.87
     },
     "SE-BN-LeNet": {
       "params": 76390,
@@ -858,14 +858,14 @@
           "test_acc": 99.34,
           "test_loss": 0.0221,
           "time_sec": 645.4,
-          "latency_ms": 1.5445
+          "latency_ms": 1.21
         }
       },
       "test_acc_mean": 99.34,
       "test_acc_std": 0.0,
       "test_loss_mean": 0.0221,
       "test_loss_std": 0.0,
-      "latency_ms": 1.5445
+      "latency_ms": 1.21
     }
   }
 }

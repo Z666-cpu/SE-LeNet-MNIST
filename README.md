@@ -21,6 +21,7 @@ SE-LeNet-MNIST/
 ├── models.py              # 四个模型定义：LeNet5 / SELenet / BNLenet / SEBNLenet（含 SEModule）
 ├── train_all_models.py    # 【主入口】训练全部 4 个模型，划分验证集、按验证集保存最优权重、输出 metrics.json 与单模型曲线
 ├── analysis.py            # 读取 metrics.json 生成论文对比曲线与基线/改进模型混淆矩阵，并写出自动验收结果
+├── latency_recheck.py     # 加载现有最优权重，按统一口径（batch=1、预热20、200次、5轮中位数）复测时延并回写 metrics.json
 ├── stats_mcnemar.py       # 加载四个最优权重，统计易混数字对并完成模型对之间的 McNemar 检验，输出 results/stats.json
 ├── requirements.txt       # numpy / matplotlib / scipy 依赖（PyTorch 按下方说明单独安装）
 ├── weights/               # 四个模型在验证集上选出的最优权重（*_best.pth）
@@ -41,6 +42,7 @@ SE-LeNet-MNIST/
 | numpy | 1.24.3 |
 | matplotlib | 3.7.1 |
 | scipy | 1.10.1（McNemar 检验用） |
+| latex2mathml | 3.81.1（仅重新生成论文 DOCX 时需要，LaTeX→原生公式） |
 | GPU | 可选；无 NVIDIA 显卡时代码自动切换 CPU（模型很小，CPU 也可训练，耗时更长） |
 
 ## 三、安装依赖
@@ -84,7 +86,10 @@ python train_all_models.py --seeds 42
 # 第二步：读取 metrics.json 生成论文对比曲线、两张混淆矩阵与自动验收文件
 python analysis.py
 
-# 第三步：加载四个最优权重，统计易混数字对并做模型对 McNemar 检验，输出 results/stats.json
+# 第三步：按统一口径复测单样本时延（batch=1、预热 20 次、正式 200 次、共 5 轮取中位数）并回写 metrics.json
+python latency_recheck.py
+
+# 第四步：加载四个最优权重，统计易混数字对并做模型对 McNemar 检验，输出 results/stats.json
 python stats_mcnemar.py
 ```
 
@@ -107,8 +112,8 @@ python stats_mcnemar.py
 
 | 模型 | 参数量 | 测试准确率 | 测试损失 | 单样本时延(ms) |
 |---|---|---|---|---|
-| LeNet-5（基线） | 61,706 | 99.25% | 0.0308 | 0.687 |
-| SE-BN-LeNet | 76,390 | 99.34% | 0.0221 | 1.544 |
+| LeNet-5（基线） | 61,706 | 99.25% | 0.0308 | 0.720 |
+| SE-BN-LeNet | 76,390 | 99.34% | 0.0221 | 1.210 |
 
 ### 5.2 消融实验（论文表 3：四个配置，单次运行）
 
@@ -121,12 +126,14 @@ python stats_mcnemar.py
 
 ### 5.3 开销对比（论文表 4）
 
-| 模型 | 参数量 | MACs | 单样本时延(ms) |
+| 模型 | 参数量 | MACs（理论值/样本） | 单样本时延(ms) |
 |---|---|---|---|
-| LeNet-5（基线） | 61,706 | 416,520 | 0.687 |
-| SE-LeNet | 76,106 | 430,920 | 0.922 |
-| BN-LeNet | 61,990 | 416,520 | 0.821 |
-| SE-BN-LeNet | 76,390 | 430,920 | 1.544 |
+| LeNet-5（基线） | 61,706 | 416,520 | 0.720 |
+| SE-LeNet | 76,106 | 430,920 | 1.070 |
+| BN-LeNet | 61,990 | 416,520 | 0.870 |
+| SE-BN-LeNet | 76,390 | 430,920 | 1.210 |
+
+> 时延口径：batch=1 单样本输入，每轮先预热 20 次、正式测量 200 次，共 5 轮取中位数；RTX 3050 Ti Laptop。
 
 ### 5.4 结果解读（与论文一致）
 
@@ -138,7 +145,7 @@ python stats_mcnemar.py
    原因是 SE 被置于输出空间尺寸为 1×1 的 C5 特征之后，全局平均池化退化为恒等映射，
    SE 实质只是对 120 维向量的两层 MLP 门控。
 3. **未观察到 BN 与 SE 的协同效应**：BN+SE（99.34%）与仅 BN（99.33%）几乎相同，
-   SE 额外引入约 1.47 万个参数（参数量增加约 23.8%）并带来一定时延上升，未换来准确率收益。
+   SE 在基线之上额外引入约 1.44 万个参数（参数量增加约 23.3%）并带来一定时延上升，未换来准确率收益。
 
 ## 六、模型结构
 
@@ -182,15 +189,15 @@ A：可以。脚本自动检测 `cuda`，不可用时使用 CPU；MNIST 与本�
 
 ## 九、参考文献
 
-1. LeCun Y, Bottou L, Bengio Y, et al. Gradient-based learning applied to document recognition[J]. Proceedings of the IEEE, 1998, 86(11): 2278-2324.
-2. Krizhevsky A, Sutskever I, Hinton G E. ImageNet classification with deep convolutional neural networks[J]. Communications of the ACM, 2017, 60(6): 84-90.
-3. Simonyan K, Zisserman A. Very deep convolutional networks for large-scale image recognition[J/OL]. arXiv:1409.1556, 2014.
-4. He K, Zhang X, Ren S, et al. Deep residual learning for recognition[C]//CVPR. 2016: 770-778.
-5. Ioffe S, Szegedy C. Batch normalization: Accelerating deep network training by reducing internal covariate shift[C]//ICML. PMLR, 2015, 37: 448-456.
-6. Hu J, Shen L, Sun G. Squeeze-and-excitation networks[C]//CVPR. 2018: 7132-7141.
-7. Woo S, Park J, Lee J Y, et al. CBAM: Convolutional block attention module[C]//ECCV. 2018: 3-19.
-8. LeCun Y, Cortes C, Burges C J. MNIST handwritten digit database[EB/OL]. http://yann.lecun.com/exdb/mnist/.
+1. LECUN Y, BOTTOU L, BENGIO Y, et al. Gradient-based learning applied to document recognition[J]. Proceedings of the IEEE, 1998, 86(11): 2278-2324.
+2. KRIZHEVSKY A, SUTSKEVER I, HINTON G E. ImageNet classification with deep convolutional neural networks[J]. Communications of the ACM, 2017, 60(6): 84-90.
+3. SIMONYAN K, ZISSERMAN A. Very deep convolutional networks for large-scale image recognition[EB/OL]. arXiv:1409.1556. (2014-09-04)[2026-11-11]. https://arxiv.org/abs/1409.1556.
+4. HE K, ZHANG X, REN S, et al. Deep residual learning for image recognition[C]//Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR). Piscataway: IEEE, 2016: 770-778.
+5. IOFFE S, SZEGEDY C. Batch normalization: accelerating deep network training by reducing internal covariate shift[C]//Proceedings of the 32nd International Conference on Machine Learning (ICML). Lille: PMLR, 2015, 37: 448-456.
+6. HU J, SHEN L, SUN G. Squeeze-and-excitation networks[C]//Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR). Piscataway: IEEE, 2018: 7132-7141.
+7. WOO S, PARK J, LEE J Y, et al. CBAM: convolutional block attention module[C]//Proceedings of the European Conference on Computer Vision (ECCV). Cham: Springer, 2018: 3-19.
+8. LECUN Y, CORTES C, BURGES C J. MNIST handwritten digit database[EB/OL]. [2026-11-11]. http://yann.lecun.com/exdb/mnist/.
 9. 段莉莉, 章磊. 一种基于改进型卷积神经网络的手写数字识别方法[J]. 现代电子技术, 2021, 44(18): 107-110.
-10. 李波燕, 张勇, 袁德荣, 等. 基于注意力机制的手写体数字识别[J]. 计算机科学, 2022, 49(11A): 211100009-5.
-11. 牟世桂. 基于卷积神经网络的 MNIST 手写数字识别优化研究[J]. 计算机应用文摘, 2025(3): 81-83,86.
-12. Iwana B K, Kusuda A. Vision Conformer: Incorporating convolutions into vision transformer layers[C/OL]//ICDAR. 2023. arXiv:2304.13991.
+10. 李波燕, 张勇, 袁德荣, 等. 基于注意力机制的手写体数字识别[J]. 计算机科学, 2022, 49(11A): 211100009.
+11. 牟世桂. 基于卷积神经网络的 MNIST 手写数字识别优化研究[J]. 计算机应用文摘, 2025(3): 81-83, 86.
+12. IWANA B K, KUSUDA A. Vision Conformer: incorporating convolutions into vision transformer layers[C]//FINK G A, JAIN R, KISE K, et al. Document Analysis and Recognition – ICDAR 2023: 17th International Conference. Cham: Springer, 2023: 54-69.

@@ -24,6 +24,10 @@ import matplotlib.pyplot as plt
 
 from models import LeNet5, SEBNLenet
 
+# 中文绘图字体，避免坐标轴中文乱码
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei']
+plt.rcParams['axes.unicode_minus'] = False
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 WEIGHT_DIR = os.path.join(BASE_DIR, 'weights')
@@ -50,12 +54,14 @@ def load_metrics():
 def plot_comparison(metrics, verify):
     """绘制论文图 1（准确率对比）与图 2（损失对比），均为主种子 30 点曲线。
 
-    每个模型三条曲线：Train（点线）、Val（虚线）、Test（实线），与图题“训练、验证与测试”一致。
+    每个模型三条曲线：训练（点线）、验证（虚线）、测试（实线），与图题“训练、验证与测试”一致。
+    底部标注为验证集选出的最优 checkpoint 上的报告值（Val-selected, reported），
+    并非训练末轮数值，以免与曲线末点混淆。
     """
     models = metrics['models']
     for metric_key, ylabel, title, fname in [
-        ('test_acc', 'Accuracy (%)', 'Accuracy Curves Comparison', 'accuracy_comparison.png'),
-        ('test_loss', 'Loss', 'Loss Curves Comparison', 'loss_comparison.png'),
+        ('test_acc', '准确率(%)', '准确率曲线对比', 'accuracy_comparison.png'),
+        ('test_loss', '损失', '损失曲线对比', 'loss_comparison.png'),
     ]:
         base = metric_key.split('_')[1]
         train_key, val_key, test_key = f'train_{base}', f'val_{base}', metric_key
@@ -65,16 +71,16 @@ def plot_comparison(metrics, verify):
             epochs = range(1, len(history[test_key]) + 1)
             npts = len(history[test_key])
             verify[f'{fname}:{name}:points'] = npts
-            # Train：点线；Val：虚线；Test：实线
+            # 训练：点线；验证：虚线；测试：实线
             plt.plot(epochs, history[train_key], ':', color=COLORS[name], alpha=0.55,
-                     linewidth=1.5, label=f'{name} (Train)')
+                     linewidth=1.5, label=f'{name}（训练）')
             plt.plot(epochs, history[val_key], '--', color=COLORS[name], alpha=0.45,
-                     label=f'{name} (Val)')
+                     label=f'{name}（验证）')
             plt.plot(epochs, history[test_key], '-', color=COLORS[name], linewidth=2,
-                     label=f'{name} (Test)')
-        # 最终统计标注（单种子 / 多种子自适应）
+                     label=f'{name}（测试）')
+        # 最优 checkpoint（验证集选取）上的报告值标注（单种子 / 多种子自适应）
         n_seeds = len(metrics['config']['seeds'])
-        label = 'Single-run final' if n_seeds == 1 else f'{n_seeds}-seed final'
+        label = '验证集选取 checkpoint（报告值）' if n_seeds == 1 else f'{n_seeds} 种子报告值'
         txt = ' | '.join(
             (f"{name} {models[name]['test_acc_mean']:.2f}%" if n_seeds == 1 else
              f"{name} {models[name]['test_acc_mean']:.2f}±{models[name]['test_acc_std']:.2f}%")
@@ -82,7 +88,7 @@ def plot_comparison(metrics, verify):
             f"{name} {models[name]['test_loss_mean']:.4f}"
             for name in COMPARE_PAIR)
         plt.figtext(0.5, -0.02, f'{label}: {txt}', ha='center', fontsize=9)
-        plt.xlabel('Epoch'); plt.ylabel(ylabel); plt.title(title)
+        plt.xlabel('训练轮次'); plt.ylabel(ylabel); plt.title(title)
         plt.legend(loc='best', ncol=2, fontsize=8); plt.grid(True, alpha=0.3); plt.tight_layout()
         plt.savefig(os.path.join(RESULTS_DIR, fname), bbox_inches='tight')
         plt.close()
@@ -114,14 +120,15 @@ def confusion_matrix(model, loader):
 
 def plot_confusion(cm, name):
     plt.figure(figsize=(8, 7), dpi=200)
-    plt.imshow(cm, cmap='Blues')
+    im = plt.imshow(cm, cmap='Blues')
     for i in range(10):
         for j in range(10):
             plt.text(j, i, str(cm[i, j]), ha='center', va='center',
                      color='white' if cm[i, j] > cm.max() * 0.5 else 'black', fontsize=8)
-    plt.colorbar()
-    plt.xlabel('Predicted Label'); plt.ylabel('True Label')
-    plt.title(f'Confusion Matrix - {name}')
+    cbar = plt.colorbar(im)
+    cbar.set_label('样本数', fontsize=10)
+    plt.xlabel('预测类别'); plt.ylabel('真实类别')
+    plt.title(f'混淆矩阵 - {name}')
     plt.xticks(range(10)); plt.yticks(range(10)); plt.tight_layout()
     plt.savefig(os.path.join(RESULTS_DIR, f'confusion_{name}.png'))
     plt.close()

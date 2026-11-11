@@ -15,7 +15,8 @@
   2. 最优 checkpoint 依据验证集准确率选取（并列时取验证损失更低者），
      报告的测试准确率与测试损失均来自该 checkpoint，口径一致。
   3. 支持多随机种子重复运行，报告均值 ± 标准差，以判断差异是否在随机波动范围内。
-  4. 固定随机种子并开启 cuDNN 确定性；测量单样本推理时延。
+  4. 固定随机种子并开启 cuDNN 确定性；以 batch=1 单样本测量推理时延（每轮预热 20 次、
+     正式测量 200 次，共 5 轮取中位数）。
 
 运行方式（在本脚本所在目录）：
     python train_all_models.py                 # 默认单种子 42
@@ -42,6 +43,9 @@ from torch.utils.data import DataLoader, Subset
 from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei']
+plt.rcParams['axes.unicode_minus'] = False
+
 from models import LeNet5, SELenet, BNLenet, SEBNLenet
 
 # ===================== 固定实验配置（与论文一致，请勿随意修改） =====================
@@ -51,7 +55,9 @@ LR = 0.001
 WEIGHT_DECAY = 1e-4
 VAL_SIZE = 6000           # 从训练集划分的验证集大小
 NUM_WORKERS = 0           # Windows 下建议 0；Linux 可调到 2~4
-LATENCY_RUNS = 200        # 推理时延测量次数
+LATENCY_RUNS = 200       # 每轮时延测量前向次数
+LATENCY_ROUNDS = 5       # 时延独立测量轮数，取中位数
+LATENCY_WARMUP = 20      # 每轮预热次数（不计入统计）
 # ================================================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -114,22 +120,30 @@ def run_epoch(model, loader, criterion, device, train=False, optimizer=None):
     return total_loss / total, 100. * correct / total
 
 
-def measure_latency(model, device, runs=LATENCY_RUNS):
-    """测量单样本前向推理时延（毫秒），含 warmup 与 CUDA 同步。"""
+def measure_latency(model, device, rounds=LATENCY_ROUNDS, runs=LATENCY_RUNS,
+                    warmup=LATENCY_WARMUP):
+    """测量 batch=1 单样本前向推理时延（毫秒）。
+
+    每轮先预热 warmup 次（不计入统计），再正式测量 runs 次并取该轮平均时延；
+    共 rounds 轮独立测量，最终返回各轮时延的中位数；含 CUDA 同步。
+    """
     model.eval()
     x = torch.randn(1, 1, 32, 32, device=device)
+    per_round = []
     with torch.no_grad():
-        for _ in range(20):
-            model(x)
-        if device.type == 'cuda':
-            torch.cuda.synchronize()
-        t0 = time.time()
-        for _ in range(runs):
-            model(x)
-        if device.type == 'cuda':
-            torch.cuda.synchronize()
-        t1 = time.time()
-    return (t1 - t0) / runs * 1000.0
+        for _ in range(rounds):
+            for _ in range(warmup):
+                model(x)
+            if device.type == 'cuda':
+                torch.cuda.synchronize()
+            t0 = time.time()
+            for _ in range(runs):
+                model(x)
+            if device.type == 'cuda':
+                torch.cuda.synchronize()
+            t1 = time.time()
+            per_round.append((t1 - t0) / runs * 1000.0)
+    return float(np.median(per_round))
 
 
 def train_one_model(model_name, model_cls, seed, loaders, device, save_weight=False):
@@ -197,20 +211,20 @@ def plot_single(model_name, history):
     """绘制单模型准确率 / 损失曲线（主种子）。"""
     epochs = range(1, EPOCHS + 1)
     plt.figure(dpi=200)
-    plt.plot(epochs, history['train_acc'], label='Train')
-    plt.plot(epochs, history['val_acc'], label='Validation')
-    plt.plot(epochs, history['test_acc'], label='Test')
-    plt.xlabel('Epoch'); plt.ylabel('Accuracy (%)')
-    plt.title(f'{model_name} Accuracy'); plt.legend(); plt.grid(True, alpha=0.3)
+    plt.plot(epochs, history['train_acc'], label='训练')
+    plt.plot(epochs, history['val_acc'], label='验证')
+    plt.plot(epochs, history['test_acc'], label='测试')
+    plt.xlabel('训练轮次'); plt.ylabel('准确率(%)')
+    plt.title(f'{model_name} 准确率'); plt.legend(); plt.grid(True, alpha=0.3)
     plt.savefig(os.path.join(RESULTS_DIR, f'{model_name}_accuracy.png'), bbox_inches='tight')
     plt.close()
 
     plt.figure(dpi=200)
-    plt.plot(epochs, history['train_loss'], label='Train')
-    plt.plot(epochs, history['val_loss'], label='Validation')
-    plt.plot(epochs, history['test_loss'], label='Test')
-    plt.xlabel('Epoch'); plt.ylabel('Loss')
-    plt.title(f'{model_name} Loss'); plt.legend(); plt.grid(True, alpha=0.3)
+    plt.plot(epochs, history['train_loss'], label='训练')
+    plt.plot(epochs, history['val_loss'], label='验证')
+    plt.plot(epochs, history['test_loss'], label='测试')
+    plt.xlabel('训练轮次'); plt.ylabel('损失')
+    plt.title(f'{model_name} 损失'); plt.legend(); plt.grid(True, alpha=0.3)
     plt.savefig(os.path.join(RESULTS_DIR, f'{model_name}_loss.png'), bbox_inches='tight')
     plt.close()
 
