@@ -1,7 +1,7 @@
 设备: cuda
 种子: [42]
 训练 54000 / 验证 6000 / 测试 10000
-LeNet-5: params=61706, test_acc=99.25±0.00%, test_loss=0.0308, latency=0.687ms
-SE-LeNet: params=76106, test_acc=99.25±0.00%, test_loss=0.0308, latency=0.922ms
-BN-LeNet: params=61990, test_acc=99.33±0.00%, test_loss=0.0195, latency=0.821ms
-SE-BN-LeNet: params=76390, test_acc=99.34±0.00%, test_loss=0.0221, latency=1.544ms
+LeNet-5: params=61706, test_acc=99.25±0.00%, test_loss=0.0308, latency=0.720ms
+SE-LeNet: params=76106, test_acc=99.25±0.00%, test_loss=0.0308, latency=1.070ms
+BN-LeNet: params=61990, test_acc=99.33±0.00%, test_loss=0.0195, latency=0.870ms
+SE-BN-LeNet: params=76390, test_acc=99.34±0.00%, test_loss=0.0221, latency=1.210ms

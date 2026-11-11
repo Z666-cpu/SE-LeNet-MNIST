@@ -17,6 +17,7 @@ from train_all_models import measure_latency, WEIGHT_DIR, RESULTS_DIR
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 METRICS_PATH = os.path.join(RESULTS_DIR, 'metrics.json')
+TRAIN_LOG_PATH = os.path.join(BASE_DIR, 'train_log.txt')
 
 MODEL_FACTORY = {
     'LeNet-5': LeNet5,
@@ -24,6 +25,23 @@ MODEL_FACTORY = {
     'BN-LeNet': BNLenet,
     'SE-BN-LeNet': SEBNLenet,
 }
+
+
+def rewrite_train_log(metrics, device):
+    """按复测后的 metrics.json 同步重写根目录 train_log.txt，避免日志时延与指标文件不一致。"""
+    cfg = metrics['config']
+    val_size = cfg['val_size']
+    train_size = 60000 - val_size
+    lines = [f'设备: {device}', f'种子: {cfg["seeds"]}',
+             f'训练 {train_size} / 验证 {val_size} / 测试 10000']
+    for name, m in metrics['models'].items():
+        lines.append(
+            f"{name}: params={m['params']}, "
+            f"test_acc={m['test_acc_mean']:.2f}±{m['test_acc_std']:.2f}%, "
+            f"test_loss={m['test_loss_mean']:.4f}, "
+            f"latency={m['latency_ms']:.3f}ms")
+    with open(TRAIN_LOG_PATH, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines) + '\n')
 
 
 def main():
@@ -52,6 +70,9 @@ def main():
     with open(METRICS_PATH, 'w', encoding='utf-8') as f:
         json.dump(metrics, f, ensure_ascii=False, indent=2)
     print('metrics.json 时延已回写:', METRICS_PATH)
+
+    rewrite_train_log(metrics, device)
+    print('train_log.txt 已按 metrics.json 同步:', TRAIN_LOG_PATH)
 
 
 if __name__ == '__main__':
