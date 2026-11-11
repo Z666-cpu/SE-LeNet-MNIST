@@ -2,6 +2,7 @@
 
 > 课程论文复现项目 · 作者：张子泊（华北电力大学 自动化系）
 > 论文题目：《LeNet-5 手写数字识别复现：批归一化与通道门控消融研究》
+> 代码、权重与实验数据：https://github.com/Z666-cpu/SE-LeNet-MNIST（commit 70298da）
 
 本项目复现经典网络 **LeNet-5**（LeCun et al., 1998）在 MNIST 上的训练流程，
 并设置四个配置用于对比与消融：基线 LeNet-5、仅 SE 通道门控、仅批归一化（BN）、SE-BN-LeNet。
@@ -26,7 +27,7 @@ SE-LeNet-MNIST/
 ├── requirements.txt       # numpy / matplotlib / scipy 依赖（PyTorch 按下方说明单独安装）
 ├── weights/               # 四个模型在验证集上选出的最优权重（*_best.pth）
 ├── results/               # 对比曲线、单模型曲线、混淆矩阵、metrics.json、verification.txt
-├── train_log.txt          # 人类可读的训练汇总日志
+├── train_log.txt          # 人类可读训练汇总日志（按 metrics.json 同步，时延以 metrics.json 为准）
 ├── data/                  # MNIST 数据集（首次运行自动下载，不入库）
 ├── word_tmp/              # 论文生成脚本与渲染临时文件（不入库）
 └── 论文_LeNet-5手写数字识别复现_批归一化与通道门控消融研究.docx
@@ -104,7 +105,7 @@ python stats_mcnemar.py
 - `results/confusion_LeNet-5.png`、`results/confusion_SE-BN-LeNet.png`：论文图 3 两张混淆矩阵
 - `results/verification.txt`：混淆矩阵对角线准确率与论文表格数字的自动核对结果
 - `results/stats.json`：各模型易混数字对与三对模型的 McNemar 检验不一致样本数、p 值
-- `train_log.txt`：人类可读训练汇总日志
+- `train_log.txt`：人类可读训练汇总日志，由 `latency_recheck.py` 按 `results/metrics.json` 同步；若二者不一致，时延与指标以 `results/metrics.json` 为准
 
 ## 五、实验结果（RTX 3050 Ti Laptop，torch 2.6.0+cu124，seed=42，30 轮，单次运行）
 
@@ -133,7 +134,7 @@ python stats_mcnemar.py
 | BN-LeNet | 61,990 | 416,520 | 0.870 |
 | SE-BN-LeNet | 76,390 | 430,920 | 1.210 |
 
-> 时延口径：batch=1 单样本输入，每轮先预热 20 次、正式测量 200 次，共 5 轮取中位数；RTX 3050 Ti Laptop。
+> 时延口径：batch=1 单样本输入，每轮先预热 20 次、正式测量 200 次，共 5 轮取中位数；RTX 3050 Ti Laptop。`train_log.txt` 中的时延与本表、`metrics.json` 保持一致；如不一致，以 `results/metrics.json` 为准。
 
 ### 5.4 结果解读（与论文一致）
 
@@ -201,3 +202,7 @@ A：可以。脚本自动检测 `cuda`，不可用时使用 CPU；MNIST 与本�
 10. 李波燕, 张勇, 袁德荣, 等. 基于注意力机制的手写体数字识别[J]. 计算机科学, 2022, 49(11A): 211100009.
 11. 牟世桂. 基于卷积神经网络的 MNIST 手写数字识别优化研究[J]. 计算机应用文摘, 2025(3): 81-83, 86.
 12. IWANA B K, KUSUDA A. Vision Conformer: incorporating convolutions into vision transformer layers[C]//FINK G A, JAIN R, KISE K, et al. Document Analysis and Recognition – ICDAR 2023: 17th International Conference. Cham: Springer, 2023: 54-69.
+
+## 十、许可证
+
+本项目代码与文档采用 [MIT License](LICENSE)，可自由用于学习、研究与教学用途；引用本项目时请保留版权声明。MNIST 数据集及其原始模型版权归其各自权利人所有。
